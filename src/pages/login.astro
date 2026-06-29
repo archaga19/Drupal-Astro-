@@ -1,0 +1,111 @@
+---
+export const prerender = false;
+
+import Layout from "../layouts/Layout.astro";
+
+let error = "";
+
+if (Astro.request.method === "POST") {
+  try {
+    const formData = await Astro.request.formData();
+    const username = formData.get("username")?.toString().trim() || "";
+    const password = formData.get("password")?.toString() || "";
+
+    if (!username || !password) {
+      error = "Por favor completa todos los campos";
+    } else {
+      const body = new URLSearchParams();
+      body.append("grant_type", "password");
+      body.append("client_id", import.meta.env.DRUPAL_CLIENT_ID);
+      body.append("client_secret", import.meta.env.DRUPAL_CLIENT_SECRET);
+      body.append("username", username);
+      body.append("password", password);
+
+      const tokenUrl = import.meta.env.DRUPAL_TOKEN_URL;
+
+      const tokenRes = await fetch(tokenUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: body.toString(),
+      });
+
+      const tokenData = await tokenRes.json();
+
+      if (tokenRes.ok && tokenData.access_token) {
+        Astro.cookies.set("auth_token", tokenData.access_token, {
+          path: "/",
+          httpOnly: true,
+          secure: false,
+          sameSite: "lax",
+          maxAge: tokenData.expires_in || 3600,
+        });
+
+        Astro.cookies.set("logged_username", username, { path: "/" });
+        return Astro.redirect("/");
+      } else {
+        error = "Usuario o contraseña incorrectos";
+      }
+    }
+  } catch (err) {
+    console.error(err);
+    error = "Error de conexión con el servidor de Drupal";
+  }
+}
+---
+
+<Layout title="Ingreso Seguro">
+  <div class="box">
+    <h2>Ingreso al Sistema</h2>
+    <form method="POST">
+      <input name="username" placeholder="Usuario" required />
+      <br /><br />
+      <input
+        name="password"
+        type="password"
+        placeholder="Contraseña"
+        required
+      />
+      <br /><br />
+      <button type="submit">Ingresar</button>
+    </form>
+    {error && <p class="alert">{error}</p>}
+  </div>
+</Layout>
+
+<style>
+  .box {
+    max-width: 300px;
+    margin: 60px auto;
+    padding: 25px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-family: sans-serif;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+  input {
+    display: block;
+    width: 100%;
+    padding: 8px;
+    box-sizing: border-box;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+  }
+  button {
+    width: 100%;
+    padding: 10px;
+    background: #0076ff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+  }
+  .alert {
+    color: #b91c1c;
+    background: #fef2f2;
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    text-align: center;
+  }
+</style>

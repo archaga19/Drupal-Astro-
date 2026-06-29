@@ -1,0 +1,38 @@
+---
+import type { DrupalUser } from "../types/drupal";
+
+interface Props {
+  user: DrupalUser;
+}
+
+const { user } = Astro.props;
+
+const userId = user.uid?.[0]?.value ?? "---";
+const userName = user.name?.[0]?.value ?? "Sin nombre";
+const userMail = user.mail?.[0]?.value ?? "---";
+const userRoles = user.roles?.length
+  ? user.roles.map((r) => r.target_id).join(", ")
+  : "sin rol";
+---
+
+<tr>
+  <td><strong>{userId}</strong></td>
+  <td>{userName}</td>
+  <td>{userMail}</td>
+  <td><span class="badge-table">{userRoles}</span></td>
+</tr>
+
+<style>
+  td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #444;
+  }
+  .badge-table {
+    background: #f1f5f9;
+    color: #475569;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+  }
+</style>

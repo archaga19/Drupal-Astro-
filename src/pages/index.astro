@@ -1,11 +1,128 @@
 ---
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/Layout.astro';
+export const prerender = false;
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+import Layout from '../layouts/Layout.astro';
+import UserRow from '../components/UserRow.astro';
+import { getDrupalUsers } from '../services/drupal';
+import type { DrupalUser } from '../types/drupal';
+
+
+const token = Astro.cookies.get('auth_token')?.value;
+const loggedUsername = Astro.cookies.get('logged_username')?.value || 'Usuario';
+
+if (!token) {
+  return Astro.redirect('/login');
+}
+
+let filteredUsers: DrupalUser[] = [];
+let currentUser: DrupalUser | null = null;
+let errorMsg = '';
+
+
+const allUsers = await getDrupalUsers(token);
+
+if (allUsers) {
+  
+  currentUser = allUsers.find(u => u.name?.[0]?.value === loggedUsername) || null;
+
+  if (currentUser) {
+    
+    const currentUserRoles = currentUser.roles?.map(r => r.target_id) || [];
+
+    
+    if (currentUserRoles.includes('administrator')) {
+      filteredUsers = allUsers;
+    } else {
+     
+      filteredUsers = allUsers.filter(user => {
+        const userRoles = user.roles?.map(r => r.target_id) || [];
+        
+        
+        return userRoles.some(role => currentUserRoles.includes(role));
+      });
+    }
+  } else {
+   
+    filteredUsers = allUsers;
+  }
+} else {
+  errorMsg = 'No se pudieron recuperar los usuarios del sistema';
+}
+
+
+if (Astro.request.method === 'POST') {
+  Astro.cookies.delete('auth_token', { path: '/' });
+  Astro.cookies.delete('logged_username', { path: '/' });
+  return Astro.redirect('/login');
+}
 ---
 
-<Layout>
-	<Welcome />
+<Layout title="Dashboard de Usuarios">
+  <div class="dashboard-container">
+    
+    <header class="main-header">
+      <div class="profile-card">
+        <span class="avatar">{loggedUsername.charAt(0).toUpperCase()}</span>
+        <div>
+          <h3>{loggedUsername}</h3>
+          {currentUser && (
+            <p class="email">{currentUser.mail?.[0]?.value || 'Sin correo'}</p>
+            <p><span class="badge">{currentUser.roles?.map(r => r.target_id).join(', ') || 'sin rol'}</span></p>
+          )}
+        </div>
+      </div>
+      <form method="POST">
+        <button type="submit" class="btn-logout">Salir</button>
+      </form>
+    </header>
+
+    <main>
+      <h2 class="section-title">Usuarios del Sistema</h2>
+      <div class="table-responsive">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nombre</th>
+              <th>Email</th>
+              <th>Rol</th>
+            </tr>
+          </thead>
+          <tbody>
+            {errorMsg ? (
+              <tr><td colspan="4" class="error">{errorMsg}</td></tr>
+            ) : (
+              
+              filteredUsers.map((user) => <UserRow user={user} />)
+            )}
+          </tbody>
+        </table>
+      </div>
+    </main>
+
+  </div>
 </Layout>
+
+<style>
+  .dashboard-container { max-width: 850px; margin: 40px auto; padding: 0 20px; font-family: system-ui, sans-serif; color: #333; }
+  
+
+  .main-header { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 30px; border: 1px solid #e2e8f0; }
+  .profile-card { display: flex; gap: 15px; align-items: center; }
+  .profile-card h3 { margin: 0; font-size: 1.1rem; color: #0f172a; }
+  .profile-card .email { margin: 2px 0 0 0; font-size: 0.85rem; color: #64748b; }
+  .avatar { width: 42px; height: 42px; background: #0076ff; color: white; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-weight: bold; font-size: 1.1rem; }
+  .badge { background: #f0fdf4; color: #16a34a; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; border: 1px solid #bbf7d0; }
+  
+  /* Botón de salida */
+  .btn-logout { background: #fff; color: #dc2626; border: 1px solid #fca5a5; padding: 6px 14px; border-radius: 4px; cursor: pointer; transition: background 0.2s; font-size: 0.85rem; font-weight: 500; }
+  .btn-logout:hover { background: #fef2f2; border-color: #dc2626; }
+  
+  /* Estilos de la lista */
+  .section-title { font-size: 1.25rem; margin-bottom: 15px; color: #1e293b; font-weight: 600; }
+  .table-responsive { background: #fff; border-radius: 8px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+  .custom-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; }
+  .custom-table th { background: #f8fafc; padding: 12px 15px; border-bottom: 1px solid #e2e8f0; color: #64748b; font-weight: 600; }
+  
+  .error { color: #dc2626; text-align: center; font-weight: bold; padding: 25px; background: #fef2f2; }
+</style>
