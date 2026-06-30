@@ -1,15 +1,22 @@
 ---
+// Importación del tipado TypeScript para garantizar la estructura del objeto de usuario de Drupal
 import type { DrupalUser } from "../types/drupal";
 
+// Definición de la interfaz Props para especificar los datos obligatorios que el componente padre debe heredar
 interface Props {
   user: DrupalUser;
 }
 
+// Extracción de las propiedades enviadas al componente desde la etiqueta de llamada externa (ej: <UserRow user={user} />)
 const { user } = Astro.props;
 
+// Extracción limpia de datos con operadores de fusión nula (??) para evitar fallos si los datos vienen vacíos de la API
+// Estructura de Drupal clásica: lectura de los campos compuestos basados en arreglos de objetos con llaves 'value'
 const userId = user.uid?.[0]?.value ?? "---";
 const userName = user.name?.[0]?.value ?? "Sin nombre";
 const userMail = user.mail?.[0]?.value ?? "---";
+
+// Transformación del arreglo de roles en una sola cadena de texto separada por comas
 const userRoles = user.roles?.length
   ? user.roles.map((r) => r.target_id).join(", ")
   : "sin rol";
@@ -23,11 +30,14 @@ const userRoles = user.roles?.length
 </tr>
 
 <style>
+  /* Diseño interno de las celdas de la fila */
   td {
     padding: 12px 15px;
     border-bottom: 1px solid #f1f5f9;
     color: #444;
   }
+
+  /* Estilo modular para las etiquetas de rol de los usuarios en la lista */
   .badge-table {
     background: #f1f5f9;
     color: #475569;

@@ -1,53 +1,72 @@
 ---
+// Configuración del modo de renderizado de Astro
+// false deactiva la generación estática (SSG); la página se procesa en el servidor por cada petición (SSR)
 export const prerender = false;
 
+// Importación del diseño base para mantener la estructura visual global
 import Layout from "../layouts/Layout.astro";
 
+// Variable de estado local para almacenar mensajes de error y mostrarlos en la interfaz
 let error = "";
 
+// Bloque principal de control: se ejecuta solo cuando el usuario envía el formulario (petición POST)
 if (Astro.request.method === "POST") {
   try {
+    // Extracción segura de los datos enviados en el cuerpo del formulario
     const formData = await Astro.request.formData();
     const username = formData.get("username")?.toString().trim() || "";
     const password = formData.get("password")?.toString() || "";
 
+    // Validación en el servidor para asegurar que los campos no viajen vacíos
     if (!username || !password) {
       error = "Por favor completa todos los campos";
     } else {
+      // Preparación de los datos en formato x-www-form-urlencoded exigido por OAuth2
       const body = new URLSearchParams();
-      body.append("grant_type", "password");
-      body.append("client_id", import.meta.env.DRUPAL_CLIENT_ID);
-      body.append("client_secret", import.meta.env.DRUPAL_CLIENT_SECRET);
+      body.append("grant_type", "password"); // Flujo de autenticación clásico por contraseña
+      body.append("client_id", import.meta.env.DRUPAL_CLIENT_ID); // Identificador de la aplicación en Drupal
+      body.append("client_secret", import.meta.env.DRUPAL_CLIENT_SECRET); // Clave secreta de la aplicación en Drupal
       body.append("username", username);
       body.append("password", password);
 
+      // URL del endpoint de autenticación obtenida desde las variables de entorno (.env)
       const tokenUrl = import.meta.env.DRUPAL_TOKEN_URL;
 
+      // Petición HTTP POST hacia el servidor de Drupal para validar credenciales
       const tokenRes = await fetch(tokenUrl, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: body.toString(),
       });
 
+      // Conversión de la respuesta recibida a formato JSON
       const tokenData = await tokenRes.json();
 
+      // Verificación de éxito: si la respuesta es HTTP 200 y contiene un token válido
       if (tokenRes.ok && tokenData.access_token) {
+        // Configuración de la cookie de sesión con el token de acceso obtenido
         Astro.cookies.set("auth_token", tokenData.access_token, {
           path: "/",
-          httpOnly: true,
-          secure: false,
-          sameSite: "lax",
-          maxAge: tokenData.expires_in || 3600,
+          httpOnly: true, // Seguridad: previene que scripts del navegador (XSS) accedan al token
+          secure: false, // Cambiar a 'true' en entornos de producción bajo HTTPS
+          sameSite: "lax", // Protección contra ataques CSRF balanceando usabilidad
+          maxAge: tokenData.expires_in || 3600, // Tiempo de vida basado en la respuesta de Drupal (por defecto 1 hora)
         });
 
+        // Configuración de una cookie secundaria para mostrar el nombre del usuario en la interfaz
         Astro.cookies.set("logged_username", username, { path: "/" });
+
+        // Redirección inmediata a la página principal tras un inicio de sesión exitoso
         return Astro.redirect("/");
       } else {
+        // Mensaje controlado si las credenciales fallan o el usuario no existe
         error = "Usuario o contraseña incorrectos";
       }
     }
   } catch (err) {
+    // Registro del error real en los logs del servidor para depuración técnica
     console.error(err);
+    // Mensaje genérico seguro para proteger detalles de la infraestructura ante el cliente
     error = "Error de conexión con el servidor de Drupal";
   }
 }
@@ -56,9 +75,11 @@ if (Astro.request.method === "POST") {
 <Layout title="Ingreso Seguro">
   <div class="box">
     <h2>Ingreso al Sistema</h2>
+
     <form method="POST">
       <input name="username" placeholder="Usuario" required />
       <br /><br />
+
       <input
         name="password"
         type="password"
@@ -66,13 +87,16 @@ if (Astro.request.method === "POST") {
         required
       />
       <br /><br />
+
       <button type="submit">Ingresar</button>
     </form>
+
     {error && <p class="alert">{error}</p>}
   </div>
 </Layout>
 
 <style>
+  /* Estilos encapsulados para el diseño de la caja de login */
   .box {
     max-width: 300px;
     margin: 60px auto;
@@ -82,6 +106,8 @@ if (Astro.request.method === "POST") {
     font-family: sans-serif;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   }
+
+  /* Ajustes visuales de los campos de entrada de texto */
   input {
     display: block;
     width: 100%;
@@ -90,6 +116,8 @@ if (Astro.request.method === "POST") {
     border: 1px solid #cbd5e1;
     border-radius: 4px;
   }
+
+  /* Botón de envío con diseño responsivo y llamadas a la acción en color azul */
   button {
     width: 100%;
     padding: 10px;
@@ -100,6 +128,8 @@ if (Astro.request.method === "POST") {
     cursor: pointer;
     font-weight: bold;
   }
+
+  /* Estilo de alerta en tonos rojizos para indicar fallos o advertencias de validación */
   .alert {
     color: #b91c1c;
     background: #fef2f2;

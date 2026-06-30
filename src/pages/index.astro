@@ -1,58 +1,67 @@
 ---
+// Desactiva la generación estática (SSG); obliga al servidor a procesar esta página bajo demanda (SSR)
 export const prerender = false;
 
+// Importaciones de interfaz, componentes de fila y servicios de datos de Drupal
 import Layout from '../layouts/Layout.astro';
 import UserRow from '../components/UserRow.astro';
 import { getDrupalUsers } from '../services/drupal';
 import type { DrupalUser } from '../types/drupal';
 
-
+// Recuperación de variables guardadas en las cookies del navegador
 const token = Astro.cookies.get('auth_token')?.value;
 const loggedUsername = Astro.cookies.get('logged_username')?.value || 'Usuario';
 
+// Control de acceso: si no existe un token válido, redirige al login inmediatamente
 if (!token) {
   return Astro.redirect('/login');
 }
 
-let filteredUsers: DrupalUser[] = [];
-let currentUser: DrupalUser | null = null;
-let errorMsg = '';
+// Inicialización de variables de estado del servidor
+let filteredUsers: DrupalUser[] = []; // Almacenará los usuarios finales que se mostrarán en la tabla
+let currentUser: DrupalUser | null = null; // Guardará el objeto del usuario logueado actual
+let errorMsg = ''; // Mensaje para capturar fallos de carga
 
-
+// Consumo del servicio API para traer el listado completo de usuarios de Drupal
 const allUsers = await getDrupalUsers(token);
 
 if (allUsers) {
-  
+  // Identifica al usuario actual comparando el nombre guardado en la cookie con la lista de la API
   currentUser = allUsers.find(u => u.name?.[0]?.value === loggedUsername) || null;
 
   if (currentUser) {
-    
+    // Mapeo simple para extraer los IDs de los roles que posee el usuario logueado
     const currentUserRoles = currentUser.roles?.map(r => r.target_id) || [];
 
-    
+    // Sistema de Permisos y Filtrado:
     if (currentUserRoles.includes('administrator')) {
+      // Regla de Administrador: visualiza la totalidad de los usuarios sin restricciones
       filteredUsers = allUsers;
     } else {
-     
+      // Regla de Usuario Regular: ve solo a los usuarios con quienes comparte al menos un rol
       filteredUsers = allUsers.filter(user => {
         const userRoles = user.roles?.map(r => r.target_id) || [];
-        
-        
+        // Verifica la coincidencia de roles entre el usuario actual y los registros del ciclo
         return userRoles.some(role => currentUserRoles.includes(role));
       });
     }
   } else {
-   
+    // Caso alternativo por si las cookies no vinculan a un usuario exacto
     filteredUsers = allUsers;
   }
 } else {
+  // Configuración del mensaje visual si el servicio fetch devuelve nulo o falla
   errorMsg = 'No se pudieron recuperar los usuarios del sistema';
 }
 
-
+// Manejo del evento Logout (Cierre de Sesión):
+// Al hacer clic en el botón "Salir", el formulario realiza un envío POST a sí mismo
 if (Astro.request.method === 'POST') {
+  // Eliminación limpia de las cookies de autenticación del dominio
   Astro.cookies.delete('auth_token', { path: '/' });
   Astro.cookies.delete('logged_username', { path: '/' });
+  
+  // Redirección definitiva al inicio para forzar la reautenticación
   return Astro.redirect('/login');
 }
 ---
@@ -71,6 +80,7 @@ if (Astro.request.method === 'POST') {
           )}
         </div>
       </div>
+      
       <form method="POST">
         <button type="submit" class="btn-logout">Salir</button>
       </form>
@@ -92,7 +102,7 @@ if (Astro.request.method === 'POST') {
             {errorMsg ? (
               <tr><td colspan="4" class="error">{errorMsg}</td></tr>
             ) : (
-              
+              // Bucle encargado de enviar los datos filtrados individualmente al subcomponente UserRow
               filteredUsers.map((user) => <UserRow user={user} />)
             )}
           </tbody>
@@ -104,25 +114,29 @@ if (Astro.request.method === 'POST') {
 </Layout>
 
 <style>
+  /* Maquetación del layout y rejillas del área de control */
   .dashboard-container { max-width: 850px; margin: 40px auto; padding: 0 20px; font-family: system-ui, sans-serif; color: #333; }
-  
 
+  /* Estilos para la barra superior de usuario y diseño de tarjetas */
   .main-header { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 30px; border: 1px solid #e2e8f0; }
   .profile-card { display: flex; gap: 15px; align-items: center; }
   .profile-card h3 { margin: 0; font-size: 1.1rem; color: #0f172a; }
   .profile-card .email { margin: 2px 0 0 0; font-size: 0.85rem; color: #64748b; }
+  
+  /* Iconos circulares e insignias de etiquetas de rol */
   .avatar { width: 42px; height: 42px; background: #0076ff; color: white; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-weight: bold; font-size: 1.1rem; }
   .badge { background: #f0fdf4; color: #16a34a; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; border: 1px solid #bbf7d0; }
   
-  /* Botón de salida */
+  /* Botón de salida con microinteracciones básicas */
   .btn-logout { background: #fff; color: #dc2626; border: 1px solid #fca5a5; padding: 6px 14px; border-radius: 4px; cursor: pointer; transition: background 0.2s; font-size: 0.85rem; font-weight: 500; }
   .btn-logout:hover { background: #fef2f2; border-color: #dc2626; }
   
-  /* Estilos de la lista */
+  /* Visualización y adaptabilidad de la tabla de registros */
   .section-title { font-size: 1.25rem; margin-bottom: 15px; color: #1e293b; font-weight: 600; }
   .table-responsive { background: #fff; border-radius: 8px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
   .custom-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; }
   .custom-table th { background: #f8fafc; padding: 12px 15px; border-bottom: 1px solid #e2e8f0; color: #64748b; font-weight: 600; }
   
+  /* Manejo visual de alertas de error de carga en filas */
   .error { color: #dc2626; text-align: center; font-weight: bold; padding: 25px; background: #fef2f2; }
 </style>
