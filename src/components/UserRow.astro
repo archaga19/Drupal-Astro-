@@ -1,48 +1,59 @@
 ---
-// Importación del tipado TypeScript para garantizar la estructura del objeto de usuario de Drupal
 import type { DrupalUser } from "../types/DrupalUser";
 
-// Definición de la interfaz Props para especificar los datos obligatorios que el componente padre debe heredar
 interface Props {
   user: DrupalUser;
 }
 
-// Extracción de las propiedades enviadas al componente desde la etiqueta de llamada externa (ej: <UserRow user={user} />)
 const { user } = Astro.props;
-
-// Extracción limpia de datos con operadores de fusión nula (??) para evitar fallos si los datos vienen vacíos de la API
-// Estructura de Drupal clásica: lectura de los campos compuestos basados en arreglos de objetos con llaves 'value'
-const userId = user.uid?.[0]?.value ?? "---";
-const userName = user.name?.[0]?.value ?? "Sin nombre";
-const userMail = user.mail?.[0]?.value ?? "---";
-
-// Transformación del arreglo de roles en una sola cadena de texto separada por comas
-const userRoles = user.roles?.length
-  ? user.roles.map((r) => r.target_id).join(", ")
-  : "sin rol";
 ---
 
 <tr>
-  <td><strong>{userId}</strong></td>
-  <td>{userName}</td>
-  <td>{userMail}</td>
-  <td><span class="badge-table">{userRoles}</span></td>
+  <td>{user.uid}</td>
+  <td class="username">{user.name || "Anónimo"}</td>
+  <td>{user.mail || "—"}</td>
+  <td>
+    {
+      user.field_organizacion ? (
+        <span class="org-text">{user.field_organizacion}</span>
+      ) : (
+        <span class="none-text">N/A</span>
+      )
+    }
+  </td>
+  <td>
+    <span class="role-text">{user.roles_target_id || "sin rol"}</span>
+  </td>
 </tr>
 
 <style>
-  /* Diseño interno de las celdas de la fila */
+  tr {
+    border-bottom: 1px solid #e2e8f0;
+    transition: background 0.15s;
+  }
+  tr:hover {
+    background: #f8fafc;
+  }
   td {
     padding: 12px 15px;
-    border-bottom: 1px solid #f1f5f9;
-    color: #444;
+    color: #334155;
+    vertical-align: middle;
   }
-
-  /* Estilo modular para las etiquetas de rol de los usuarios en la lista */
-  .badge-table {
-    background: #f1f5f9;
+  .username {
+    font-weight: 500;
+    color: #0f172a;
+  }
+  .role-text {
     color: #475569;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
+  }
+  .org-text {
+    color: #1e40af;
+    font-weight: 500;
+    font-size: 0.85rem;
+  }
+  .none-text {
+    color: #94a3b8;
+    font-style: italic;
   }
 </style>

@@ -1,6 +1,9 @@
 export interface DrupalUser {
-  uid?: Array<{ value: number }>;
-  name?: Array<{ value: string }>;
-  mail?: Array<{ value: string }>;
-  roles?: Array<{ target_id: string }>;
+  name: string;
+  uid: string;
+  mail: string;
+  roles_target_id: string; 
+  uuid: string;
+  user_picture: string;    
+  field_organizacion: string; // Ejemplo: "Bomberos" o "Cruz Roja"
 }
