@@ -1,4 +1,4 @@
-import type { DrupalUser } from '../types/drupal';
+import type { DrupalUser } from '../types/DrupalUser';
 
 // Constantes de configuración obtenidas desde las variables de entorno del proyecto
 const BASE_URL = import.meta.env.PUBLIC_DRUPAL_BASE_URL; // URL base del sitio Drupal
