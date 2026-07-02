@@ -99,6 +99,7 @@ if (Astro.request.method === "POST") {
   /* Estilos encapsulados para el diseño de la caja de login */
 
   .box {
+    background-color: azure;
     max-width: 300px;
     margin: 60px auto;
     padding: 25px;
@@ -128,6 +129,9 @@ if (Astro.request.method === "POST") {
     border-radius: 4px;
     cursor: pointer;
     font-weight: bold;
+  }
+  button:hover {
+    background-color: #0855ad; /* El nuevo color que tomará */
   }
 
   /* Estilo de alerta en tonos rojizos para indicar fallos o advertencias de validación */

@@ -4,6 +4,8 @@ export interface DrupalUser {
   mail: string;
   roles_target_id: string; 
   uuid: string;
-  user_picture: string;    
-  field_organizacion: string; // Ejemplo: "Bomberos" o "Cruz Roja"
+  user_picture: string;    //url de la imegen
+  field_organizacion: string; 
 }
+
+
