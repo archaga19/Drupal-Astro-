@@ -41,6 +41,7 @@ export async function loginWithDrupal(username: string, password: string) {
   }
 }
 
+
 /**
  * Servicio para obtener la lista de usuarios registrados desde un endpoint REST de Drupal
  * * @param token - El token de acceso Bearer válido obtenido en la autenticación
